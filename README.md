@@ -31,6 +31,12 @@ Time complexity:
 
 Where `N` is the number of 64-bit words and `K` is the number of visited nodes.
 
+## Installation
+
+```bash
+go get github.com/nkamenev/hibit
+```
+
 ## Example
 
 ```go
