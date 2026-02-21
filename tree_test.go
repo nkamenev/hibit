@@ -124,7 +124,7 @@ func TestIntersectBitTrees(t *testing.T) {
 		"single bit": {
 			left:  []uint64{0b0100},
 			right: []uint64{0b0100},
-			want:  []int{3},
+			want:  []int{2},
 		},
 		"no overlap": {
 			left:  []uint64{0b1010},
