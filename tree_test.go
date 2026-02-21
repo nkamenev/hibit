@@ -212,30 +212,6 @@ func BenchmarkBuildLevels(b *testing.B) {
 	}
 }
 
-func BenchmarkPopIndexes(b *testing.B) {
-	cases := []struct {
-		name  string
-		value uint64
-	}{
-		{"all zero", 0x0},
-		{"single lsb", 0x1},
-		{"single msb", 0x8000000000000000},
-		{"alternating", 0x5555555555555555},
-		{"all ones", 0xFFFFFFFFFFFFFFFF},
-	}
-
-	out := make([]int, 64)
-
-	for _, tc := range cases {
-		b.Run(tc.name, func(b *testing.B) {
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				_ = popIndexes(tc.value, 0, out)
-			}
-		})
-	}
-}
-
 func genWords(n int, density float64) []uint64 {
 	out := make([]uint64, n)
 
