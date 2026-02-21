@@ -112,47 +112,57 @@ func TestNewBitTree(t *testing.T) {
 
 func TestIntersectBitTrees(t *testing.T) {
 	tests := map[string]struct {
-		left  []uint64
-		right []uint64
-		want  []int
+		first  []uint64
+		second []uint64
+		third  []uint64
+		want   []int
 	}{
 		"empty intersection": {
-			left:  []uint64{0b0000},
-			right: []uint64{0b0000},
-			want:  []int{},
+			first:  []uint64{0b0000},
+			second: []uint64{0b0000},
+			third:  []uint64{0b0000},
+			want:   []int{},
 		},
 		"single bit": {
-			left:  []uint64{0b0100},
-			right: []uint64{0b0100},
-			want:  []int{2},
+			first:  []uint64{0b0100},
+			second: []uint64{0b0100},
+			third:  []uint64{0b0100},
+			want:   []int{2},
 		},
 		"no overlap": {
-			left:  []uint64{0b1010},
-			right: []uint64{0b0101},
-			want:  []int{},
+			first:  []uint64{0b1010},
+			second: []uint64{0b0101},
+			third:  []uint64{0b1010},
+			want:   []int{},
 		},
 		"partial overlap": {
-			left:  []uint64{0b1111},
-			right: []uint64{0b0101},
-			want:  []int{0, 2},
+			first:  []uint64{0b1111},
+			second: []uint64{0b0101},
+			third:  []uint64{0b0100},
+			want:   []int{2},
 		},
 		"multiple words": {
-			left: []uint64{
+			first: []uint64{
 				0b1111,
 				0b0001,
 			},
-			right: []uint64{
+			second: []uint64{
 				0b0101,
 				0b0001,
 			},
+			third: []uint64{
+				0b0100,
+				0b0001,
+			},
 			want: []int{
-				0, 2, // first word
+				2,  // first word
 				64, // second word
 			},
 		},
 		"all bits": {
-			left:  []uint64{^uint64(0)},
-			right: []uint64{^uint64(0)},
+			first:  []uint64{^uint64(0)},
+			second: []uint64{^uint64(0)},
+			third:  []uint64{^uint64(0)},
 			want: func() []int {
 				out := make([]int, 64)
 				for i := range 64 {
@@ -167,11 +177,12 @@ func TestIntersectBitTrees(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			leftTree := NewBitTree(tt.left)
-			rightTree := NewBitTree(tt.right)
+			firstTree := NewBitTree(tt.first)
+			secondTree := NewBitTree(tt.second)
+			thirdTree := NewBitTree(tt.third)
 
 			out := make([]int, 128)
-			n := logic.IntersectBitTrees(out, leftTree, rightTree)
+			n := logic.IntersectBitTrees(out, firstTree, secondTree, thirdTree)
 			got := out[:n]
 
 			if !reflect.DeepEqual(got, tt.want) {
@@ -241,44 +252,58 @@ func genWords(n int, density float64) []uint64 {
 }
 
 func BenchmarkIntersectBitTrees(b *testing.B) {
+	var sizes = []int{
+		// 1,
+		// 8,
+		// 64,
+		256,
+		1024,
+		// 4096,
+		// 8192,
+		// 16384,
+	}
 	densities := []struct {
 		name    string
 		density float64
 	}{
-		{"1bit", 1.0 / 64},
+		// {"1bit", 1.0 / 64},
 		{"10%", 0.10},
-		{"20%", 0.20},
-		{"30%", 0.30},
-		{"40%", 0.40},
+		// {"20%", 0.20},
+		// {"30%", 0.30},
+		// {"40%", 0.40},
 		{"50%", 0.50},
-		{"60%", 0.60},
-		{"70%", 0.70},
-		{"80%", 0.80},
-		{"90%", 0.90},
+		// {"60%", 0.60},
+		// {"70%", 0.70},
+		// {"80%", 0.80},
+		// {"90%", 0.90},
 		{"100%", 1.0},
 	}
 
 	logic := NewLogic(WithStackSize(64))
 
+	treesCount := []int{256, 1024}
+
 	for _, n := range sizes {
 		for _, d := range densities {
-			b.Run(
-				fmt.Sprintf("words=%d/density=%s", n, d.name),
-				func(b *testing.B) {
-					left := genWords(n, d.density)
-					right := genWords(n, d.density)
+			for _, tc := range treesCount {
+				b.Run(
+					fmt.Sprintf("words=%d/density=%s/trees=%d", n, d.name, tc),
+					func(b *testing.B) {
+						trees := make([]*BitTree, tc)
+						for i := 0; i < tc; i++ {
+							words := genWords(n, d.density)
+							trees[i] = NewBitTree(words)
+						}
 
-					leftTree := NewBitTree(left)
-					rightTree := NewBitTree(right)
+						out := make([]int, n*64)
 
-					out := make([]int, n*64)
-
-					b.ResetTimer()
-					for i := 0; i < b.N; i++ {
-						_ = logic.IntersectBitTrees(out, leftTree, rightTree)
-					}
-				},
-			)
+						b.ResetTimer()
+						for i := 0; i < b.N; i++ {
+							_ = logic.IntersectBitTrees(out, trees...)
+						}
+					},
+				)
+			}
 		}
 	}
 }
