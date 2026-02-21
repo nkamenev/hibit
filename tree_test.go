@@ -171,7 +171,7 @@ func TestIntersectBitTrees(t *testing.T) {
 			rightTree := NewBitTree(tt.right)
 
 			out := make([]int, 128)
-			n := logic.IntersectBitTrees(leftTree, rightTree, out)
+			n := logic.IntersectBitTrees(out, leftTree, rightTree)
 			got := out[:n]
 
 			if !reflect.DeepEqual(got, tt.want) {
@@ -275,7 +275,7 @@ func BenchmarkIntersectBitTrees(b *testing.B) {
 
 					b.ResetTimer()
 					for i := 0; i < b.N; i++ {
-						_ = logic.IntersectBitTrees(leftTree, rightTree, out)
+						_ = logic.IntersectBitTrees(out, leftTree, rightTree)
 					}
 				},
 			)

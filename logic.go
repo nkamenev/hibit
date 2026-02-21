@@ -24,15 +24,15 @@ func NewLogic(opts ...func(*Logic)) *Logic {
 	return l
 }
 
-// IntersectBitTrees computes the intersection of two BitTrees.
+// IntersectBitTrees computes the intersection of one or more BitTrees.
 //
-// It finds all bit indices that are set in both trees and writes them
-// into the provided output slice `out`.
+// It finds all bit indices that are set in **all input trees** and writes
+// them into the provided output slice `out`.
 //
 // The function:
-//   - assumes both trees have the same logical length
-//   - performs a depth-first traversal of the bit tree
-//   - skips entire subtrees when their AND is zero
+//   - assumes all trees have the same logical length
+//   - performs a depth-first traversal of the bit trees
+//   - skips entire subtrees when the bitwise AND of all trees is zero
 //   - does not allocate
 //
 // Returned value is the number of indices written to `out`.
@@ -43,9 +43,15 @@ func NewLogic(opts ...func(*Logic)) *Logic {
 //
 // IntersectBitTrees is not safe for concurrent calls on the same Logic
 // instance.
-func (l *Logic) IntersectBitTrees(left, right *BitTree, out []int) int {
-	if left.Len() != right.Len() {
+func (l *Logic) IntersectBitTrees(out []int, trees ...*BitTree) int {
+	if len(trees) == 0 {
 		return 0
+	}
+	treeSz := trees[0].Len()
+	for _, t := range trees {
+		if t.Len() != treeSz {
+			return 0
+		}
 	}
 
 	if l.stack == nil || l.stack.Cap() < 64 {
@@ -54,7 +60,7 @@ func (l *Logic) IntersectBitTrees(left, right *BitTree, out []int) int {
 		l.stack.Reset()
 	}
 
-	leafStart := len(left.tree) >> 1
+	leafStart := treeSz >> 1
 
 	l.stack.Push(1)
 
@@ -62,10 +68,12 @@ func (l *Logic) IntersectBitTrees(left, right *BitTree, out []int) int {
 
 	for !l.stack.IsEmpty() {
 		i := l.stack.Pop()
-
-		and := left.tree[i] & right.tree[i]
-		if and == 0 {
-			continue
+		and := trees[0].tree[i]
+		for j := 1; j < len(trees); j++ {
+			and &= trees[j].tree[i]
+			if and == 0 {
+				goto nextNode
+			}
 		}
 
 		if i >= leafStart {
@@ -73,16 +81,13 @@ func (l *Logic) IntersectBitTrees(left, right *BitTree, out []int) int {
 				break
 			}
 
-			leafIdx := i - leafStart
-			offset := leafIdx << 6
-
-			n := utils.PopBitIndexes(and, offset, out[write:])
-			write += n
-			continue
+			offset := (i - leafStart) << 6
+			write += utils.PopBitIndexes(and, offset, out[write:])
+		} else {
+			l.stack.Push(i<<1 | 1)
+			l.stack.Push(i << 1)
 		}
-
-		l.stack.Push(i<<1 | 1)
-		l.stack.Push(i << 1)
+	nextNode:
 	}
 
 	return write
