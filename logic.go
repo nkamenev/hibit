@@ -44,7 +44,7 @@ func NewLogic(opts ...func(*Logic)) *Logic {
 // IntersectBitTrees is not safe for concurrent calls on the same Logic
 // instance.
 func (l *Logic) IntersectBitTrees(out []int, trees ...*BitTree) int {
-	if len(trees) == 0 {
+	if len(trees) < 2 {
 		return 0
 	}
 	treeSz := trees[0].Len()
