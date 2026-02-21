@@ -40,26 +40,32 @@ go get github.com/nkamenev/hibit
 ## Example
 
 ```go
-left := []uint64{
+first := []uint64{
     0b1111, // bits 0..3
     0b0001, // bit 64
 }
 
-right := []uint64{
+second := []uint64{
     0b0101, // bits 0 and 2
     0b0001, // bit 64
 }
 
-leftTree := hibit.NewBitTree(left)
-rightTree := hibit.NewBitTree(right)
+third := []uint64{
+    0b0100, // bit 2
+    0b0001, // bit 64
+}
+
+firstTree := hibit.NewBitTree(first)
+secondTree := hibit.NewBitTree(second)
+thirdTree := hibit.NewBitTree(third)
 
 logic := hibit.NewLogic()
 
-out := make([]int, 16)
-n := logic.IntersectBitTrees(leftTree, rightTree, out)
+out := make([]int, 24)
+n := logic.IntersectBitTrees(out, firstTree, secondTree, thirdTree)
 
 result := out[:n]
-// result == []int{0, 2, 64}
+// result == []int{2, 64}
 ```
 
 ## Testing
