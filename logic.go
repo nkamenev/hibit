@@ -24,6 +24,15 @@ func NewLogic(opts ...func(*Logic)) *Logic {
 	return l
 }
 
+// NewDefaultLogic creates a Logic instance with a preallocated stack
+// sized for typical BitTree depths.
+//
+// The default stack size (64) is sufficient for all practical bitset
+// sizes and avoids any stack reallocation during intersections.
+func NewDefaultLogic() *Logic {
+	return &Logic{stack: utils.NewStack(64)}
+}
+
 // IntersectBitTrees computes the intersection of one or more BitTrees.
 //
 // It finds all bit indices that are set in **all input trees** and writes
