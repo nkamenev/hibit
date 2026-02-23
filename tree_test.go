@@ -92,7 +92,7 @@ func TestNewBitTree(t *testing.T) {
 			bt := NewBitTree(tt.src)
 
 			if tt.want == nil {
-				if bt.tree != nil {
+				if bt != nil {
 					t.Fatalf("expected nil tree, got %v", bt.tree)
 				}
 				return
