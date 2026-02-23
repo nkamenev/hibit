@@ -1,43 +1,60 @@
 package hibit
 
-// BitIndex represents a collection of BitTrees for multiple binary relations.
+// BitIndex represents a collection of binary relations as BitTrees.
 //
-// Each binary relation has a left and a right BitTree:
-//   - left[i] — bitset of entities in the left part of relation i
-//   - right[i] — bitset of entities in the right part of relation i
+// Conceptually, it is a relation matrix:
+//   - rows correspond to entities (each row = one entity)
+//   - columns correspond to relations (each column = one binary relation)
 //
-// BitIndex provides methods to perform intersections (joins) between these
-// relations efficiently using a reusable Logic instance.
+// Each Relation has a left and right BitTree:
+//   - left  — bitset of entities in the left part of the relation
+//   - right — bitset of entities in the right part of the relation
 //
-// The Logic stack is lazily initialized if not provided via WithLogic.
+// BitIndex provides efficient intersection (join) operations across relations
+// using a reusable Logic instance. The Logic stack is lazily initialized
+// if not provided via WithLogic.
 type BitIndex struct {
-	left, right []*BitTree
-	logic       *Logic
+	rels  []Relation
+	logic *Logic
 }
 
-// NewBitIndexFromBitsets constructs a BitIndex from slices of bitsets representing binary relations.
+// NewBitIndex creates a BitIndex from a slice of Relations.
+func NewBitIndex(relations []Relation, opts ...func(*BitIndex)) *BitIndex {
+	bi := &BitIndex{}
+	for _, o := range opts {
+		o(bi)
+	}
+
+	if cap(bi.rels) < len(relations) {
+		bi.rels = make([]Relation, 0, len(relations))
+	}
+	bi.rels = bi.rels[:0]
+	bi.rels = append(bi.rels, relations...)
+
+	if bi.logic == nil {
+		bi.logic = NewDefaultLogic()
+	}
+	return bi
+}
+
+// NewBitIndexFromBitsets constructs a BitIndex from slices of bitsets.
 //
-// Each entry in left and right represents the entities of a single binary relation.
-// left and right must have the same length. A BitTree is built for each bitset.
+// Each entry in left and right represents the indices of set bits
+// for a single binary relation. A BitTree is built for each set.
 //
-// Optional functional options can be provided, e.g. WithLogic to set
-// a custom Logic instance.
+// left and right must have the same length. Returns nil if not.
 //
-// Returns nil if left and right have different lengths.
+// Optional functional options can be provided (e.g., WithLogic).
 func NewBitIndexFromBitsets(left, right [][]uint64, opts ...func(*BitIndex)) *BitIndex {
 	if len(left) != len(right) {
 		return nil
 	}
-	leftTrees := make([]*BitTree, len(left))
-	rightTrees := make([]*BitTree, len(left))
+	rels := make([]Relation, len(left))
 	for i, lb := range left {
-		leftTrees[i] = NewBitTree(lb)
-		rightTrees[i] = NewBitTree(right[i])
-
+		rels[i] = NewRelationFromBitsets(lb, right[i])
 	}
 	bi := &BitIndex{
-		left:  leftTrees,
-		right: rightTrees,
+		rels: rels,
 	}
 	for _, o := range opts {
 		o(bi)
@@ -48,20 +65,36 @@ func NewBitIndexFromBitsets(left, right [][]uint64, opts ...func(*BitIndex)) *Bi
 	return bi
 }
 
-// Join returns the intersection of a chain of relations specified
-// by relIndices.
+// AddRelation appends a new relation to the BitIndex.
+func (bi *BitIndex) AddRelation(rel Relation) {
+	bi.rels = append(bi.rels, rel)
+}
+
+// RowsNum returns the number of entities (rows) in the BitIndex.
+func (bi *BitIndex) RowsNum() int {
+	if len(bi.rels) == 0 {
+		return 0
+	}
+	return bi.rels[0].Size()
+}
+
+// RelationsNum returns the number of relations (columns) in the BitIndex.
+func (bi *BitIndex) RelationsNum() int {
+	return len(bi.rels)
+}
+
+// Join performs a chain join across multiple relations specified by relIndices.
 //
-// It performs a chain join: for each consecutive pair of relations
-// in relIndices, it intersects the right BitTree of the first with
-// the left BitTree of the next. The resulting set of global bit
-// indices is returned.
+// For each consecutive pair of relations in relIndices:
+//   - intersect the right BitTree of the first with the left BitTree of the next
+//   - propagate the intersection
 //
-// If len(relIndices) < 2 or any index is out of range, Join returns nil.
+// The resulting set of entity indices is returned in `out[:n]`.
 //
-// The returned slice is newly allocated and contains exactly the
-// bit indices of the intersection.
+// Returns nil if relIndices has fewer than 2 elements, any index is out of range,
+// or any left/right BitTree is nil.
 func (bi *BitIndex) Join(out []int, relIndices []int) []int {
-	if len(relIndices) < 2 {
+	if len(relIndices) < 2 || len(bi.rels) == 0 {
 		return nil
 	}
 
@@ -70,12 +103,15 @@ func (bi *BitIndex) Join(out []int, relIndices []int) []int {
 		curr := relIndices[i]
 		next := relIndices[i+1]
 		if curr < 0 ||
-			curr >= len(bi.left) ||
+			curr >= len(bi.rels) ||
 			next < 0 ||
-			next >= len(bi.left) {
+			next >= len(bi.rels) {
 			return nil
 		}
-		trees = append(trees, bi.right[curr], bi.left[next])
+		if bi.rels[curr].right == nil || bi.rels[next].left == nil {
+			return nil
+		}
+		trees = append(trees, bi.rels[curr].right, bi.rels[next].left)
 	}
 
 	n := bi.logic.IntersectBitTrees(out, trees...)
@@ -83,11 +119,15 @@ func (bi *BitIndex) Join(out []int, relIndices []int) []int {
 }
 
 // WithLogic sets a custom Logic instance to be used by BitIndex.
-//
-// This allows reusing a preconfigured Logic or providing a Logic
-// with a different stack size.
 func WithLogic(logic *Logic) func(*BitIndex) {
 	return func(bi *BitIndex) {
 		bi.logic = logic
+	}
+}
+
+// WithRelationsCap preallocates capacity for relations in the BitIndex.
+func WithRelationsCap(capacity int) func(*BitIndex) {
+	return func(bi *BitIndex) {
+		bi.rels = make([]Relation, 0, capacity)
 	}
 }
