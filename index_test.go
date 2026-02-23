@@ -98,12 +98,18 @@ func TestBitIndexJoin(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			bi := NewBitIndexFromBitsets(tt.left, tt.right)
 			var out []int
-			if bi != nil && len(bi.left) > 0 {
-				out = make([]int, bi.left[0].Len()*64)
+			if bi != nil && len(bi.rels) > 0 {
+				out = make([]int, bi.rels[0].left.Len())
 			}
 			got := bi.Join(out, tt.relIndices)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("%s: Join(%v) = %v, want %v", name, tt.relIndices, got, tt.want)
+				t.Fatalf(
+					"%s: Join(%v) = %v, want %v",
+					name,
+					tt.relIndices,
+					got,
+					tt.want,
+				)
 			}
 		})
 	}
