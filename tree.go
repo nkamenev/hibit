@@ -22,11 +22,9 @@ type BitTree struct {
 // The input slice represents a bitset where each uint64 stores 64 bits.
 // The number of leaves is rounded up to the next power of two; missing
 // leaves are implicitly treated as zero.
-//
-// Construction is O(n), where n is the number of input words.
 func NewBitTree(src []uint64) *BitTree {
 	if len(src) == 0 {
-		return &BitTree{}
+		return nil
 	}
 
 	leafCount := utils.NextPow2(len(src))
@@ -43,6 +41,28 @@ func NewBitTree(src []uint64) *BitTree {
 	return &BitTree{tree: tree}
 }
 
+// NewBitTreeWithLeafCount builds a BitTree with a specified number of leaves.
+func NewBitTreeWithLeafCount(leafCount int, src []uint64) *BitTree {
+	if !utils.IsPow2(leafCount) ||
+		len(src) == 0 ||
+		leafCount < len(src) {
+		return nil
+	}
+
+	tree := make([]uint64, leafCount<<1)
+
+	// leaves
+	copy(tree[leafCount:], src)
+
+	// build bottom-up
+	for i := leafCount - 1; i > 0; i-- {
+		tree[i] = tree[i<<1] | tree[i<<1|1]
+	}
+
+	return &BitTree{tree: tree}
+}
+
+// Len returns the total number of nodes in the tree, including leaves and internal nodes.
 func (bt *BitTree) Len() int {
 	return len(bt.tree)
 }
