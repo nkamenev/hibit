@@ -30,3 +30,8 @@ func NextPow2(n int) int {
 	}
 	return 1 << bits.Len(uint(n-1))
 }
+
+// IsPow2 returns true if n is a power of two.
+func IsPow2(n int) bool {
+	return n > 0 && (n&(n-1)) == 0
+}
