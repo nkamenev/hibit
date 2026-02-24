@@ -21,7 +21,10 @@ type Relation struct {
 // - left   — indices of entities in the left part of the relation
 // - right  — indices of entities in the right part of the relation
 func NewRelation(size int, left, right []int) Relation {
-	if len(left) == 0 && len(right) == 0 || size == 0 {
+	if size == 0 {
+		return Relation{}
+	}
+	if size < utils.Max(len(left), len(right)) {
 		return Relation{}
 	}
 	return Relation{
@@ -31,8 +34,8 @@ func NewRelation(size int, left, right []int) Relation {
 }
 
 // NewRelationFromBitsets constructs a Relation from pre-built bitsets.
-func NewRelationFromBitsets(left, right []uint64) Relation {
-	if len(left) == 0 || len(right) == 0 {
+func NewRelationFromBitsets(size int, left, right []uint64) Relation {
+	if size == 0 {
 		return Relation{}
 	}
 	leafCount := utils.NextPow2(utils.Max(len(left), len(right)))
