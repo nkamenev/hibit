@@ -1,5 +1,7 @@
 package hibit
 
+import "github.com/nkamenev/hibit/utils"
+
 // BitIndex represents a collection of binary relations as BitTrees.
 //
 // Conceptually, it is a relation matrix:
@@ -51,7 +53,7 @@ func NewBitIndexFromBitsets(left, right [][]uint64, opts ...func(*BitIndex)) *Bi
 	}
 	rels := make([]Relation, len(left))
 	for i, lb := range left {
-		rels[i] = NewRelationFromBitsets(lb, right[i])
+		rels[i] = NewRelationFromBitsets(utils.Max(len(lb), len(right[i])), lb, right[i])
 	}
 	bi := &BitIndex{
 		rels: rels,
